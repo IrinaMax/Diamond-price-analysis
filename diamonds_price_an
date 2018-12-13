@@ -1,0 +1,74 @@
+library(ggplot2)
+library(dplyr)
+
+diamonds
+diamonds %>% filter(cut =="Ideal") -> Ideal_cut
+#View(Ideal_cut)
+Ideal_cut %>% filter(price>15000) -> Hprice
+Ideal_cut %>% filter(price>10000 & price<15000) -> Mprice
+Ideal_cut %>% filter(price<10000) -> Lprice
+
+# dimentions
+diamonds %>% select('x', 'y', 'z') -> diamomd_dim
+diamomd_dim %>%  filter(x>5, y>5)
+
+#diamonds_colors
+diamonds %>%  filter(color == "D") -> diam_best_color
+diam_best_color %>% filter(clarity == "IF")-> best_clarity
+best_clarity %>% summarise(mean_price = mean(price))
+
+ggplot(diamonds, aes(x=cut))+ geom_bar(fill="lightsalmon4")
+ggplot(diamonds, aes(x=cut, fill=cut)) +geom_bar()
+ggplot(diamonds, aes(x=cut, fill =cut)) + geom_density()
+ggplot(diamonds, aes(x=carat, y = price)) + geom_point(col = 'palegreen4')
+# price vs length
+ggplot(diamonds, aes(y=price, x=x)) + geom_point(col = "mediumorchid2")
+
+# lin Reg
+library(caTools)
+set.seed(123)
+my_split <- sample.split(diamonds$price, 0.65)
+tr <- subset(diamonds, my_split ==T)
+tt <- subset(diamonds , my_split ==F)
+
+mod_1 <- lm(price~., tr)
+mod_1 %>% summary
+res <- predict(mod_1, newdata= tt)
+final.mat <- cbind(actual = tt$price, predicted=res)
+final.mat <- as.data.frame(final.mat )
+final.mat$err <- (final.mat$actual-final.mat$predicted)
+
+rmse1 <- sqrt(mean((final.mat$err)^2))
+rmse1
+anova <-anova(mod_1)
+anova
+
+
+ggplot(final.mat, aes(y=actual, x=predicted))+ geom_point(col = "blue")
+pl <-plot(final.mat$actual, final.mat$predicted,
+          xlab = "actual", ylab = "predicted",
+          color = "pink", main = "Prediction")
+pl
+abline(lm(tt$price~final.mat$predicted, col = "red"))
+
+# mod2
+mod_2 <- lm(price~carat+ cut+ clarity, tr)
+mod_2 %>% summary
+res2 <- predict(mod_2, newdata= tt)
+final.mat2 <- cbind(actual = tt$price, predicted=res2)
+final.mat2 <- as.data.frame(final.mat2 )
+final.mat2$err <- (final.mat2$actual-final.mat2$predicted)
+
+rmse2 <- sqrt(mean((final.mat2$err)^2))
+rmse2
+anova <-anova(mod_2)
+anova
+
+
+ggplot(final.mat, aes(y=actual, x=predicted))+ geom_point(col = "blue")
+pl <-plot(final.mat$actual, final.mat$predicted,
+          xlab = "actual", ylab = "predicted",
+          color = "pink", main = "Prediction")
+pl
+abline(lm(tt$price~final.mat$predicted, col = "red"))
+

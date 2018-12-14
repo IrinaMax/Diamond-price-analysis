@@ -1,0 +1,169 @@
+# friedman test
+# https://www.datasciencecentral.com/profiles/blogs/friedman-test-code-in-r
+
+friedman.test <- function(data, alpha=0.05) {
+  #-----------------------------------------------------------------------------
+  # Author : Okan OYMAK, MS in Operations Research at the NPS Monterey, CA, USA
+  # Date : 12 March 2015
+  #
+  # Data:
+  # The data consist of b mutually independent k-variate random variables
+  # (X_i1, X_i2, ..., X_ik), called b blocks, i=1,2,...,b.
+  # The random variable is X_ij in block i and is associated with treatment j .
+  # The b blocks are arranged as follows.
+  #
+  # Treatments
+  # Block 1 2 ... k
+  # 1 X_11 X_12 ... X_1k
+  # 2 X_21 X_22 ... X_2k
+  # . .... .... ... ....
+  # . .... .... ... ....
+  # . .... .... ... ....
+  # b X_b1 X_b2 ... X_bk
+  #
+  # Let R(Xij) be the rank, from 1 to k, assigned to Xij within block (row) i.
+  # That is, for block i the random variables X_i1, X_i2, ..., X_ik are
+  # compared with each other and rank 1 is assigned to the smallest observed
+  # value, rank 2 to the second smallest, and so on to the rank k, which is
+  # assigned to the largest observation in block i.
+  #
+  # Assumptions:
+  # 1. The b k-variate random variables are mutually independent. (The results
+  # within one block do not influence the results within the other blocks)
+  # 2. Within each block the observations may be ranked acoording to some
+  # criteria of interest.
+  #
+  # Hypotheses:
+  # Ho: Each ranking of the random variables within a block is equally likely.
+  # (i.e. the treatments have identical effectes.)
+  # Ha: At least one of the treatments tends to yield larger observed values
+  # than at least one of the other treatment.
+  #-----------------------------------------------------------------------------
+  # LET THE FUN BEGIN!
+  #-----------------------------------------------------------------------------
+  if(!is.matrix(data)) {
+    data <- as.matrix(data)
+  }
+  tie.check <- numeric()
+
+  for (i in 1: dim(data)[1]) {
+    if(length(unique(data[i,])) == dim(data)[2]) {
+      tie.check[i] <- 1
+    } else {
+      tie.check[i] <- 0
+    }
+  }
+
+  b <- dim(data)[1]
+  k <- dim(data)[2]
+
+  ranks <- t(apply(data, 1, rank))
+  Rj <- apply(ranks, 2, sum)
+
+  if (sum(tie.check) < b ) { # means there are ties
+
+    A1 <- sum(ranks^2)
+    C1 <- (b*k*(k+1)^2)/4
+    T1 <- ((k-1)*sum((Rj-(b*(k+1))/2)^2))/(A1-C1)
+    T2 <- ((b-1)*T1)/(b*(k-1)-T1)
+    k1 <- k-1
+    k2 <- (b-1)*k1
+    cr1 <- qchisq(1-alpha, k1)
+    p.value.1.T1 <- 1-pchisq(T1, k1)
+    cr <- qf(1-alpha, k1, k2)
+    p.value.1 <- 1-pf(T2, k1, k2)
+
+    cat("Ties exist.", "\n", "\n")
+    cat("Friedman Test Statistic based on the Chi-Square Distribution, T1 =", round(T1, 4), "\n")
+    cat("Critical region of size", alpha,
+        "corresponds to all values of T1 greater than", round(cr1, 4),"\n")
+    cat("p-value = ", p.value.1.T1, " df = ", k1, "\n", "\n")
+
+    cat("Friedman Test Statistic based on the F Distribution, T2 =", round(T2, 4), "\n")
+    cat("Critical region of size", alpha,
+        "corresponds to all values of T2 greater than", round(cr, 4),"\n")
+
+    if(p.value.1 <= alpha) {
+      t.stat <- qt(1 - alpha/2, k2)
+      cat("p-value = ", p.value.1, "<", "alpha = ", alpha, "\n", "\n")
+      cat("Therefore, reject the null hypothesis", "\n", "\n")
+      cat("INFERENCE: At least one of the treatments tends to yield larger observed values than at least one of the other treatments.", "\n", "\n")
+      cat("Multiple comparisons are as follows", "\n")
+      combinations <- combn(c(1:dim(data)[2]), 2)
+      for(i in 1:dim(combinations)[2]) {
+        test.1 <- abs(Rj[combinations[1,i]]-Rj[combinations[2,i]])
+        test.2 <- t.stat*sqrt( (2*(b*A1-sum(Rj^2))) / ((b-1)*(k-1)) )
+        cat("Treatments:", combinations[1,i], "-", combinations[2,i], "\n")
+        cat("|Rj - Ri| =", test.1, " compared to", round(test.2, 4))
+        if (test.1 <= test.2) {
+          cat(" No Difference", "\n", "\n")
+        }
+        else {
+          cat(" ***Different***", "\n", "\n")
+
+        }
+      }
+
+    }
+    else {
+      cat("p-value = ", p.value.1, ">", "alpha = ", alpha, "\n", "\n")
+      cat("Therefore, do not reject the null hypothesis", "\n", "\n")
+      cat("INFERENCE: Each ranking of the random variables within a block is equally likely.", "\n")
+      cat(" (i.e. the treatments have identical effects.)", "\n")
+    }
+
+  } else if (sum(tie.check) == b) { # means there are no ties
+
+    A1 <- b*k*(k+1)*(2*k+1)/6
+    T1 <- (12/(b*k*(k+1)))*sum((Rj-b*(k+1)/2)^2)
+    T2 <- ((b-1)*T1)/(b*(k-1)-T1)
+    k1 <- k-1
+    k2 <- (b-1)*k1
+    cr1 <- qchisq(1-alpha, k1)
+    p.value.0.T1 <- 1-pchisq(T1, k1)
+    cr <- qf(1-alpha, k1, k2)
+    p.value.0 <- 1-pf(T2, k1, k2)
+
+    cat("No ties exist.", "\n", "\n")
+    cat("Friedman Test Statistic based on the Chi-Square Distribution, T1 =", round(T1, 4), "\n")
+    cat("Critical region of size", alpha,
+        "corresponds to all values of T1 greater than", round(cr1, 4),"\n")
+    cat("p-value = ", p.value.0.T1, " df= ", k1, "\n", "\n")
+
+    cat("Friedman Test Statistic based on the F Distribution, T2 =", round(T2, 4), "\n")
+    cat("Critical region of size", alpha,
+        "corresponds to all values of T2 greater than", round(cr, 4),"\n")
+
+    if(p.value.0 <= alpha) {
+      t.stat <- qt(1 - alpha/2, k2)
+      cat("p-value = ", p.value.0, "<", "alpha = ", alpha, "\n", "\n")
+      cat("Therefore, reject the null hypothesis", "\n", "\n")
+      cat("INFERENCE: At least one of the treatments tends to yield larger observed values than at least one of the other treatments.", "\n", "\n")
+      cat("Multiple comparisons are as follows", "\n")
+      combinations <- combn(c(1:dim(data)[2]), 2)
+      for(i in 1:dim(combinations)[2]) {
+        test.1 <- abs(Rj[combinations[1,i]]-Rj[combinations[2,i]])
+        test.2 <- t.stat*sqrt( (2*(b*A1-sum(Rj^2))) / ((b-1)*(k-1)) )
+        cat("Treatments:", combinations[1,i], "-", combinations[2,i], "\n")
+        cat("|Rj - Ri| =", test.1, " compared to", round(test.2, 4))
+        if (test.1 <= test.2) {
+          cat(" No Difference", "\n", "\n")
+        }
+        else {
+          cat(" ***Different***", "\n", "\n")
+
+        }
+      }
+
+    }
+    else {
+      cat("p-value = ", p.value.0, ">", "alpha = ", alpha, "\n", "\n")
+      cat("Therefore, do not reject the null hypothesis", "\n", "\n")
+      cat("INFERENCE: Each ranking of the random variables within a block is equally likely.", "\n")
+      cat(" (i.e. the treatments have identical effects.)", "\n")
+
+    }
+
+  }
+}
+friedman.test(cars, .5)
